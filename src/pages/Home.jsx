@@ -22,14 +22,14 @@ function Home() {
               Shop Now
               <ArrowRight className="w-5 h-5" />
             </Link>
-            {
+            {/* {
               <Link
                 to="/auth/signup"
                 className="inline-flex items-center justify-center px-8 py-3 rounded-lg border border-border text-foreground font-semibold hover:bg-muted transition"
               >
                 Create Account
               </Link>
-            }
+            } */}
           </div>
         </div>
       </section>
