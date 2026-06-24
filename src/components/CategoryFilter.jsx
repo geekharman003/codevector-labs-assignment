@@ -16,7 +16,7 @@ export default function CategoryFilter({ selectedCategories, handleCategoryChang
     })();
   }, []);
   return (
-    <div className="bg-card border border-border rounded-lg p-6">
+    <div className="bg-card border border-border rounded-lg p-6 md:fixed">
       <h3 className="text-lg font-semibold text-foreground mb-4">Categories</h3>
       <div className="space-y-3">
         {categories.map(({ category }) => (

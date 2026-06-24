@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import ProductCard from "../components/ProductCard";
 import CategoryFilter from "../components/CategoryFilter";
 import Pagination from "../components/Pagination";
@@ -12,80 +12,97 @@ export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [cursor, setCursor] = useState(0);
   const [selectedCategories, setSelectedCategories] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalRecords, setTotalRecords] = useState(0);
+
+  async function setProductsWithoutCategories() {
+    const { data } = await supabase
+      .from("products")
+      .select("id,name,category,price")
+      .order("id", { ascending: false })
+      .limit(ITEMS_PER_PAGE);
+
+    if (data.length) {
+      const lastRecord = data[data.length - 1];
+
+      // calculating count of products with all categories
+      const { count } = await supabase
+        .from("products")
+        .select("*", { count: "exact" });
+
+      setProducts(data);
+      setCursor(lastRecord.id);
+      setTotalPages(Math.ceil(count / ITEMS_PER_PAGE));
+      setTotalRecords(count);
+      setCurrentPage(1);
+    }
+  }
 
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase
-          .from("products")
-          .select("id,name,category,price")
-          .limit(ITEMS_PER_PAGE);
-
-        //   setting total pages
-        const { count } = await supabase
-          .from("products")
-          .select("*", { count: "exact" });
-
-        setProducts(data);
-        setCursor(data[data.length - 1].id);
-        setTotalPages(Math.ceil(count / ITEMS_PER_PAGE));
-        setTotalRecords(count);
+        setProductsWithoutCategories();
       } catch (error) {
         console.log(error);
       }
     })();
   }, []);
 
+  //memoizing the function so that it will only run when categories got change
+  const setProductsWithCategories = useCallback(async () => {
+    const { data } = await supabase
+      .from("products")
+      .select("id,name,category,price")
+      .in("category", selectedCategories)
+      .order("id", { ascending: false })
+      .limit(ITEMS_PER_PAGE);
+
+    if (data.length) {
+      const lastRecord = data[data.length - 1];
+
+      // calculating count of products with these categories
+      const { count } = await supabase
+        .from("products")
+        .select("*", { count: "exact" })
+        .in("category", selectedCategories);
+
+      setProducts(data);
+      setCursor(lastRecord.id);
+      setTotalPages(Math.ceil(count / ITEMS_PER_PAGE));
+      setTotalRecords(count);
+      setCurrentPage(1);
+    }
+  }, [selectedCategories]);
+
   // Filter products based on selected categories
   useEffect(() => {
     (async () => {
-      setCurrentPage(1);
+      setCurrentPage(0);
       setCursor(0);
+      setTotalPages(0);
+      setTotalRecords(0);
 
       try {
+        // if categories filters is applied
         if (selectedCategories.length > 0) {
-          const { data } = await supabase
-            .from("products")
-            .select("id,name,category,price")
-            .in("category", selectedCategories)
-            .limit(ITEMS_PER_PAGE);
-
-          const { count } = await supabase
-            .from("products")
-            .select("id,name,category,price", { count: "exact" })
-            .in("category", selectedCategories);
-
-          setProducts(data);
-          setCursor(data[data.length - 1].id);
-          setTotalPages(Math.ceil(count / ITEMS_PER_PAGE));
-          setTotalRecords(count);
-          console.log(data);
+          setProductsWithCategories();
         } else {
-          const { data } = await supabase
-            .from("products")
-            .select("id,name,category,price")
-            .limit(ITEMS_PER_PAGE);
-
-          const { count } = await supabase
-            .from("products")
-            .select("id,name,category,price", { count: "exact" });
-
-          setProducts(data);
-          setCursor(data[data.length - 1].id);
-          setTotalPages(Math.ceil(count / ITEMS_PER_PAGE));
-          setTotalRecords(count);
-          console.log(data);
+          // if no filter has applied
+          setProductsWithoutCategories();
         }
       } catch (error) {
         console.log(error);
       }
     })();
-  }, [selectedCategories]);
+  }, [selectedCategories, setProductsWithCategories]);
 
   function handleCategoryChange(category) {
+    window.scroll({
+      top: 0,
+      left: 0,
+      behavior: "smooth",
+    });
     setSelectedCategories((prev) => {
       return prev.includes(category)
         ? prev.filter((c) => c != category)
